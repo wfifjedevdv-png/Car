@@ -1,10 +1,8 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta name="google-site-verification" content="tkKHjuXVDoh0H82PMzkiWiDGCL_Z3ykNSImb0OT9ECs" />
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="icon" type="image/png" href="https://drive.google.com/uc?export=download&id=1abcDEFghIJKlmNOPqr2STuVWxyz">
 <title>Mouhamed Motors</title>
 
 <style>
@@ -14,7 +12,6 @@ body{
   color:white;
   font-family:Segoe UI,Tahoma;
 }
-
 /* LOGIN */
 #login{
  display:flex;
@@ -22,7 +19,6 @@ body{
  align-items:center;
  height:100vh;
 }
-
 .login-box{
  background:rgba(255,255,255,.08);
  padding:32px;
@@ -30,12 +26,10 @@ body{
  border-radius:24px;
  text-align:center;
 }
-
 .login-box.admin{
  border:1px solid rgba(58,160,255,.35);
  box-shadow:0 0 35px rgba(58,160,255,.25);
 }
-
 input{
  width:100%;
  padding:13px 14px;
@@ -46,7 +40,6 @@ input{
  color:white;
  font-size:15px;
 }
-
 button{
  width:100%;
  padding:13px;
@@ -58,20 +51,17 @@ button{
  font-size:16px;
  cursor:pointer;
 }
-
 .link{
  margin-top:14px;
  color:#3aa0ff;
  cursor:pointer;
  font-size:14px;
 }
-
 #error{
  color:#ff6b6b;
  margin-top:12px;
  display:none;
 }
-
 /* NAV */
 nav{
  display:none;
@@ -80,7 +70,6 @@ nav{
  padding:15px 20px;
  background:#020617;
 }
-
 /* CONTENT */
 #content{
  display:none;
@@ -88,7 +77,6 @@ nav{
  max-width:1200px;
  margin:auto;
 }
-
 .search{
  margin-bottom:20px;
  width:100%;
@@ -98,13 +86,11 @@ nav{
  background:#111827;
  color:white;
 }
-
 .cars{
  display:grid;
  grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
  gap:20px;
 }
-
 .car{
  background:rgba(255,255,255,.08);
  border-radius:20px;
@@ -112,15 +98,12 @@ nav{
  cursor:pointer;
  transition:.3s;
 }
-
 .car:hover{ transform:translateY(-5px); }
-
 .car img{
  width:100%;
  height:180px;
  object-fit:cover;
 }
-
 .car .info{ padding:15px; }
 .price{ color:#3aa0ff; font-weight:bold; }
 </style>
@@ -156,7 +139,24 @@ nav{
  <div class="cars" id="cars"></div>
 </div>
 
-<script>
+<!-- 🔥 Firebase -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getDatabase, ref, set, push, get, child } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyD9mHIXZ20Fi0F8FFq09eQ...",
+  authDomain: "car-mouhamed.firebaseapp.com",
+  databaseURL: "https://car-mouhamed-default-rtdb.firebaseio.com",
+  projectId: "car-mouhamed",
+  storageBucket: "car-mouhamed.appspot.com",
+  messagingSenderId: "786422813533",
+  appId: "1:786422813533:web:b84f2465..."
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
 /* أدمن */
 const ADMIN_USER = "mouhamed";
 const ADMIN_PASS = "Lm2007tt";
@@ -174,11 +174,8 @@ const formTitle = document.getElementById("formTitle");
 
 let isRegister = false;
 
-/* مستخدمين */
-let users = JSON.parse(localStorage.getItem("users") || "[]");
-
 /* تبديل */
-function toggleForm(){
+window.toggleForm = function(){
  isRegister = !isRegister;
  formTitle.innerText = isRegister ? "🆕 إنشاء حساب" : "🔐 تسجيل الدخول";
  nameInput.style.display = isRegister ? "block" : "none";
@@ -186,7 +183,7 @@ function toggleForm(){
 }
 
 /* إرسال */
-function submitForm(){
+window.submitForm = async function(){
  const email = emailInput.value.trim();
  const pass = passInput.value.trim();
  const name = nameInput.value.trim();
@@ -196,23 +193,28 @@ function submitForm(){
   return;
  }
 
- /* أدمن */
  if(!isRegister && email===ADMIN_USER && pass===ADMIN_PASS){
   localStorage.setItem("session", JSON.stringify({role:"admin"}));
   location.href="admin.html";
   return;
  }
 
+ const usersRef = ref(db,"users");
+
  if(isRegister){
-  if(users.find(u=>u.email===email)){
+  const snap = await get(usersRef);
+  const users = snap.val() || {};
+  if(Object.values(users).find(u=>u.email===email)){
    showError("الإيميل مستخدم");
    return;
   }
-  users.push({name,email,password:pass,role:"user"});
-  localStorage.setItem("users",JSON.stringify(users));
+  await push(usersRef,{name,email,password:pass,role:"user"});
  }
 
- const user = users.find(u=>u.email===email && u.password===pass);
+ const snap = await get(usersRef);
+ const users = snap.val() || {};
+ const user = Object.values(users).find(u=>u.email===email && u.password===pass);
+
  if(!user){
   showError("بيانات غير صحيحة");
   return;
@@ -234,27 +236,26 @@ function start(){
 }
 
 /* خروج */
-function logout(){
+window.logout = function(){
  localStorage.removeItem("session");
  location.reload();
 }
 
-/* ✅ عرض السيارات (الحل النهائي) */
-function renderCars(){
+/* عرض السيارات */
+window.renderCars = async function(){
  const q = document.getElementById("search").value.toLowerCase();
  const box = document.getElementById("cars");
-
- // إعادة قراءة السيارات دائمًا
- const cars = JSON.parse(localStorage.getItem("cars") || "[]");
-
  box.innerHTML="";
 
- if(!cars.length){
+ const snap = await get(ref(db,"cars"));
+ const cars = snap.val();
+
+ if(!cars){
   box.innerHTML="<p style='opacity:.6'>🚗 لا توجد سيارات بعد</p>";
   return;
  }
 
- cars
+ Object.values(cars)
  .filter(c=>c.name.toLowerCase().includes(q))
  .forEach((c,i)=>{
   box.innerHTML+=`
@@ -270,7 +271,7 @@ function renderCars(){
 }
 
 /* فتح سيارة */
-function openCar(i){
+window.openCar = function(i){
  localStorage.setItem("currentCar",i);
  location.href="car.html";
 }
@@ -280,7 +281,6 @@ function showError(t){
  error.style.display="block";
 }
 
-/* تشغيل */
 start();
 </script>
 
